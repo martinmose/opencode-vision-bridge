@@ -1,0 +1,30 @@
+{
+  "name": "opencode-vision-bridge",
+  "version": "0.1.0",
+  "description": "OpenCode plugin that lets text-only models handle image uploads by describing them via a vision model before they reach the LLM.",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "main": "./index.ts",
+  "files": [
+    "index.ts",
+    "lib.ts"
+  ],
+  "keywords": [
+    "opencode",
+    "plugin",
+    "vision",
+    "image",
+    "vlm",
+    "accessibility",
+    "multimodal",
+    "text-only"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@opencode-ai/plugin": "latest",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Loads the plugin from local source during development. End users install
+  // from npm instead: "plugin": ["opencode-vision-bridge"]
+  "plugin": ["./index.ts"]
+}

@@ -1,0 +1,26 @@
+schema-version = "1.12.0"
+
+[install]
+nodejs.pkg-path = "nodejs"
+pnpm.pkg-path = "pnpm"
+
+# Load per-developer config + secrets from a gitignored .env so nothing
+# deployment-specific is baked into this committed manifest. OpenCode
+# (launched from the activated shell) inherits these. Safe no-op if absent.
+[hook]
+on-activate = '''
+  if [ -f "$FLOX_ENV_PROJECT/.env" ]; then
+    set -a
+    . "$FLOX_ENV_PROJECT/.env"
+    set +a
+  fi
+'''
+
+[options]
+systems = [
+  "aarch64-darwin",
+  "aarch64-linux",
+  "x86_64-darwin",
+  "x86_64-linux",
+]
+
