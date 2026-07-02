@@ -2,7 +2,9 @@ schema-version = "1.12.0"
 
 [install]
 nodejs.pkg-path = "nodejs"
+nodejs.version = "24.15.0"
 pnpm.pkg-path = "pnpm"
+pnpm.version = "11.5.3"
 
 # Load per-developer config + secrets from a gitignored .env so nothing
 # deployment-specific is baked into this committed manifest. OpenCode
