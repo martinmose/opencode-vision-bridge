@@ -7,13 +7,9 @@ settings:
 importers:
 
   .:
-    dependencies:
-      dotenv:
-        specifier: ^16.4.7
-        version: 16.6.1
     devDependencies:
       '@opencode-ai/plugin':
-        specifier: latest
+        specifier: 1.17.8
         version: 1.17.8
       '@types/node':
         specifier: ^22.10.0
@@ -84,10 +80,6 @@ packages:
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
-
-  dotenv@16.6.1:
-    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
-    engines: {node: '>=12'}
 
   effect@4.0.0-beta.74:
     resolution: {integrity: sha512-Yx+Kh12U+i2FmjwEfKs+ePFmpMd43RPD1oGqc/VraSS9bYzvF0Ff3PojwEFEVEewp8xc92Uxu28gTspU4qyvHA==}
@@ -211,8 +203,6 @@ snapshots:
 
   detect-libc@2.1.2:
     optional: true
-
-  dotenv@16.6.1: {}
 
   effect@4.0.0-beta.74:
     dependencies:

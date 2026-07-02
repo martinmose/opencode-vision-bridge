@@ -22,8 +22,20 @@
     "text-only"
   ],
   "license": "MIT",
+  "author": "Martin Mose Facondini",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/martinmose/opencode-vision-bridge.git"
+  },
+  "homepage": "https://github.com/martinmose/opencode-vision-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/martinmose/opencode-vision-bridge/issues"
+  },
+  "scripts": {
+    "prepublishOnly": "tsc --noEmit && node --test tests/vision-bridge.test.ts"
+  },
   "devDependencies": {
-    "@opencode-ai/plugin": "latest",
+    "@opencode-ai/plugin": "1.17.8",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0"
   }
