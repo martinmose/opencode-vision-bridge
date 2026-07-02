@@ -80,7 +80,7 @@ VISION_API_KEY=replace-me
 | Variable                 | Required | Default                          | Notes                                            |
 | ------------------------ | -------- | -------------------------------- | ------------------------------------------------ |
 | `VISION_BASE_URL`        | no       | `https://api.zeldoc.ai/v1`       | OpenAI-compatible base URL                       |
-| `VISION_MODEL`           | no       | `zeldoc/gemma-4-31B`             | Any model id your endpoint serves                |
+| `VISION_MODEL`           | no       | `zeldoc/gemma-4-31b`             | Any model id your endpoint serves                |
 | `VISION_API_KEY`         | no       | `ZELDOC_API_KEY` env var         | Bearer token; falls back to `ZELDOC_API_KEY`    |
 | `VISION_QUESTION`        | no       | `Describe this image in detail.` | Question sent to the vision model                |
 | `VISION_TIMEOUT`         | no       | `60000`                          | Per-request timeout in ms (min 1000)             |
@@ -96,7 +96,7 @@ VISION_API_KEY=replace-me
 ### Choosing a vision model
 
 The plugin is model-agnostic — any OpenAI-compatible vision endpoint works.
-Defaults use `zeldoc/gemma-4-31B` via `https://api.zeldoc.ai/v1`. Override with
+Defaults use `zeldoc/gemma-4-31b` via `https://api.zeldoc.ai/v1`. Override with
 `VISION_BASE_URL` and `VISION_MODEL` to match your endpoint.
 
 ### Enabling specific models

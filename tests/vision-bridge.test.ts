@@ -79,7 +79,7 @@ describe("buildConfig", () => {
   test("applies defaults", () => {
     const cfg = buildConfig({})
     assert.strictEqual(cfg.baseUrl, "https://api.zeldoc.ai/v1")
-    assert.strictEqual(cfg.model, "zeldoc/gemma-4-31B")
+    assert.strictEqual(cfg.model, "zeldoc/gemma-4-31b")
     assert.strictEqual(cfg.timeoutMs, 60000)
     assert.strictEqual(cfg.maxConcurrency, 3)
     assert.strictEqual(cfg.prefix, "[Image description]\n")

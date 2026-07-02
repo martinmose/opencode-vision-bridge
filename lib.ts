@@ -75,7 +75,7 @@ export function buildConfig(env: Record<string, string | undefined>): VisionConf
   return {
     baseUrl: (env.VISION_BASE_URL || "https://api.zeldoc.ai/v1").replace(/\/+$/, ""),
     apiKey: env.VISION_API_KEY || env.ZELDOC_API_KEY || "",
-    model: env.VISION_MODEL || "zeldoc/gemma-4-31B",
+    model: env.VISION_MODEL || "zeldoc/gemma-4-31b",
     question: env.VISION_QUESTION || "Describe this image in detail.",
     timeoutMs: parsePositiveInt(env.VISION_TIMEOUT, 60000, 1000),
     retryDelayMs: parsePositiveInt(env.VISION_RETRY_DELAY_MS, 1000, 0),
