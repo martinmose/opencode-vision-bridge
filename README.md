@@ -28,10 +28,14 @@ text-only model receives prose like:
         "[Image description]\nA statue in front of a city skyline..."
 ```
 
-The hook contract has two sharp edges, both handled:
-- `input` is `{}` — everything is read from `output.messages`
-- `message.parts` must be mutated **in place**; reassigning the array is a
-  silent no-op (see [opencode#25754](https://github.com/anomalyco/opencode/issues/25754))
+The plugin is resilient by design:
+
+- **Graceful degradation** — if a vision call fails, the model receives a short
+  `[Image: description unavailable]` marker instead of an error. Error details
+  go to the log only, never to the model's context.
+- **Bounded concurrency** — multiple images in one message are described in
+  parallel up to `VISION_MAX_CONCURRENCY`; order is preserved.
+- **Single retry** — one retry on 5xx or timeout, with configurable backoff.
 
 ## Install
 
@@ -63,13 +67,11 @@ source:
 ## Configure
 
 The plugin reads config from `process.env`. Set these however your shell
-normally provides env vars (export them, use direnv, etc.). For this repo's
-dev setup, the Flox `on-activate` hook sources a gitignored `.env` — copy
-`.env.example` to `.env` and fill in your values:
+normally provides env vars (export them, use direnv, etc.). Defaults are baked
+in — you only need to set `VISION_API_KEY` (or `ZELDOC_API_KEY` if that's
+already in your environment).
 
 ```bash
-VISION_BASE_URL=https://router.huggingface.co/v1
-VISION_MODEL=google/gemma-4-31B-it:novita
 VISION_API_KEY=replace-me
 ```
 
@@ -77,23 +79,39 @@ VISION_API_KEY=replace-me
 
 | Variable                 | Required | Default                          | Notes                                            |
 | ------------------------ | -------- | -------------------------------- | ------------------------------------------------ |
-| `VISION_BASE_URL`        | yes      | —                                | OpenAI-compatible base URL                       |
-| `VISION_MODEL`           | yes      | `google/gemma-4-31B-it`          | Any model id your endpoint serves                |
-| `VISION_API_KEY`         | yes      | —                                | Bearer token for the endpoint                    |
+| `VISION_BASE_URL`        | no       | `https://api.zeldoc.ai/v1`       | OpenAI-compatible base URL                       |
+| `VISION_MODEL`           | no       | `zeldoc/gemma-4-31B`             | Any model id your endpoint serves                |
+| `VISION_API_KEY`         | no       | `ZELDOC_API_KEY` env var         | Bearer token; falls back to `ZELDOC_API_KEY`    |
 | `VISION_QUESTION`        | no       | `Describe this image in detail.` | Question sent to the vision model                |
 | `VISION_TIMEOUT`         | no       | `60000`                          | Per-request timeout in ms (min 1000)             |
 | `VISION_RETRY_DELAY_MS`  | no       | `1000`                           | Backoff before a 5xx/timeout retry, in ms (min 0)|
 | `VISION_MAX_CONCURRENCY` | no       | `3`                              | Max parallel vision calls (min 1)                |
 | `VISION_MAX_TOKENS`      | no       | `1024`                           | Max tokens for the description (min 1)           |
 | `VISION_PREFIX`          | no       | `[Image description]\n`          | Prefix prepended to descriptions; `""` for none  |
+| `VISION_CACHE_SIZE`      | no       | `100`                            | Max cached descriptions (min 0)                   |
+| `VISION_ENABLE_MODELS`   | no       | —                                | Comma-separated model IDs to process (e.g. `zeldoc/z-code`); takes priority over `VISION_SKIP_PROVIDERS` |
 | `VISION_SKIP_PROVIDERS`  | no       | `anthropic,openai,google,vertex,bedrock,xai,azure` | Comma-separated provider IDs to leave untouched; `none` to process every model |
 | `VISION_DEBUG`           | no       | —                                | Set to `1` to enable debug-level logs            |
 
 ### Choosing a vision model
 
 The plugin is model-agnostic — any OpenAI-compatible vision endpoint works.
-Tested with `google/gemma-4-31B-it`. Set `VISION_BASE_URL` and `VISION_MODEL`
-to match your endpoint.
+Defaults use `zeldoc/gemma-4-31B` via `https://api.zeldoc.ai/v1`. Override with
+`VISION_BASE_URL` and `VISION_MODEL` to match your endpoint.
+
+### Enabling specific models
+
+If you only want image descriptions for specific models (e.g. a single
+text-only model), set `VISION_ENABLE_MODELS` with comma-separated model IDs
+in `provider/model` format:
+
+```bash
+VISION_ENABLE_MODELS=zeldoc/z-code
+```
+
+When set, the plugin **only** processes those models — the skip list is
+ignored entirely. This takes priority over `VISION_SKIP_PROVIDERS`, like
+OpenCode's `disabled_providers` takes priority over `enabled_providers`.
 
 ### Skipping vision-capable providers
 
@@ -112,42 +130,9 @@ framework dependency.
 ```bash
 flox activate                              # enter the dev env
 pnpm install                               # install type deps (first time)
-node --test tests/vision-bridge.test.ts    # run the unit tests (44 tests)
+node --test tests/vision-bridge.test.ts    # run the unit tests
 node_modules/.bin/tsc --noEmit             # typecheck
 ```
-
-### Project layout
-
-```
-index.ts                            # plugin entry point (exports only the plugin)
-lib.ts                              # config, helpers, core logic (exported, tested)
-tests/
-  vision-bridge.test.ts             # unit tests with node:test
-.env.example                        # copy to .env (sourced by the flox hook)
-.gitignore                          # ignores .env and node_modules/
-.flox/                              # Flox env manifest (Node.js + pnpm + .env hook)
-package.json                        # npm package metadata + dev type deps
-tsconfig.json                       # TypeScript config for typechecking
-opencode.jsonc                      # local dev: loads plugin from ./index.ts
-```
-
-### Design notes
-
-- **Side-effect-free `lib.ts`** — config is read from `process.env` inside the
-  plugin initializer (in `index.ts`), so importing `lib.ts` for tests triggers
-  no I/O.
-- **Clean entry point** — `index.ts` exports only the plugin function;
-  OpenCode's loader rejects entry modules with non-function exports.
-- **Pure helpers exported** — `buildConfig`, `parsePositiveInt`,
-  `parseSkipProviders`, `isImageFilePart`, `extractActiveProvider`,
-  `shouldSkipProvider`, `formatDescription`, `withConcurrency`,
-  `describeImage`, `transformMessages` — all unit-testable in isolation.
-- **Graceful degradation** — on failure the model receives a short
-  `[Image: description unavailable]` marker. Error details go to the log only,
-  never to the model's context (no error-string leakage).
-- **Bounded concurrency** — many images in one message are described in
-  parallel up to `VISION_MAX_CONCURRENCY`; order is preserved.
-- **Single retry** — one retry on 5xx or timeout, with configurable backoff.
 
 ## License
 

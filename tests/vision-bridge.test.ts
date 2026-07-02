@@ -5,9 +5,11 @@ import {
   DEFAULT_SKIP_PROVIDERS,
   DescriptionCache,
   describeImage,
+  extractActiveModelId,
   extractActiveProvider,
   formatDescription,
   isImageFilePart,
+  parseEnableModels,
   parsePositiveInt,
   parseSkipProviders,
   shouldSkipProvider,
@@ -27,6 +29,7 @@ const baseConfig: VisionConfig = {
   maxTokens: 128,
   prefix: "[Image description]\n",
   skipProviders: [],
+  enableModels: [],
   cacheSize: 100,
   debug: false,
 }
@@ -75,15 +78,18 @@ describe("parseSkipProviders", () => {
 describe("buildConfig", () => {
   test("applies defaults", () => {
     const cfg = buildConfig({})
-    assert.strictEqual(cfg.model, "google/gemma-4-31B-it")
+    assert.strictEqual(cfg.baseUrl, "https://api.zeldoc.ai/v1")
+    assert.strictEqual(cfg.model, "zeldoc/gemma-4-31B")
     assert.strictEqual(cfg.timeoutMs, 60000)
     assert.strictEqual(cfg.maxConcurrency, 3)
     assert.strictEqual(cfg.prefix, "[Image description]\n")
     assert.deepStrictEqual(cfg.skipProviders, DEFAULT_SKIP_PROVIDERS)
     assert.strictEqual(cfg.cacheSize, 100)
   })
-  test("uses VISION_API_KEY as the bearer token", () => {
+  test("uses VISION_API_KEY as the bearer token, falling back to ZELDOC_API_KEY", () => {
     assert.strictEqual(buildConfig({ VISION_API_KEY: "key" }).apiKey, "key")
+    assert.strictEqual(buildConfig({ ZELDOC_API_KEY: "zkey" }).apiKey, "zkey")
+    assert.strictEqual(buildConfig({ VISION_API_KEY: "key", ZELDOC_API_KEY: "zkey" }).apiKey, "key")
     assert.strictEqual(buildConfig({}).apiKey, "")
   })
   test("trims trailing slashes from base url", () => {
@@ -101,6 +107,12 @@ describe("buildConfig", () => {
   })
   test("empty prefix is respected", () => {
     assert.strictEqual(buildConfig({ VISION_PREFIX: "" }).prefix, "")
+  })
+  test("parses enable models", () => {
+    assert.deepStrictEqual(parseEnableModels(undefined), [])
+    assert.deepStrictEqual(parseEnableModels(""), [])
+    assert.deepStrictEqual(parseEnableModels("zeldoc/z-code"), ["zeldoc/z-code"])
+    assert.deepStrictEqual(parseEnableModels("Zeldoc/Z-Code, anthropic/claude-opus-4-8"), ["zeldoc/z-code", "anthropic/claude-opus-4-8"])
   })
 })
 
@@ -147,6 +159,29 @@ describe("extractActiveProvider", () => {
   })
   test("returns undefined for an empty message array", () => {
     assert.strictEqual(extractActiveProvider([]), undefined)
+  })
+})
+
+describe("extractActiveModelId", () => {
+  test("returns lowercased provider/model from most recent message", () => {
+    const messages = [
+      { info: { model: { providerID: "Zeldoc", modelID: "Z-Code" } } },
+      { info: { role: "user" } },
+      { info: { model: { providerID: "Anthropic", modelID: "claude-opus-4-8" } } },
+    ]
+    assert.strictEqual(extractActiveModelId(messages), "anthropic/claude-opus-4-8")
+  })
+  test("returns undefined when modelID missing", () => {
+    assert.strictEqual(
+      extractActiveModelId([{ info: { model: { providerID: "openai" } } }]),
+      undefined,
+    )
+  })
+  test("returns undefined when no model info present", () => {
+    assert.strictEqual(extractActiveModelId([{ info: { role: "user" } }]), undefined)
+  })
+  test("returns undefined for an empty message array", () => {
+    assert.strictEqual(extractActiveModelId([]), undefined)
   })
 })
 
@@ -328,6 +363,28 @@ describe("transformMessages", () => {
     const customConfig = { ...baseConfig, skipProviders: ["anthropic"] }
     await withMockFetch(successFetch, async () => {
       const count = await transformMessages(messages, customConfig, null)
+      assert.strictEqual(count, 0)
+      assert.strictEqual((parts[0] as { type: string }).type, "file")
+    })
+  })
+
+  test("enable-list takes priority over skip-list", async () => {
+    const parts: unknown[] = [{ type: "file", mime: "image/png", url: "data:image/png;base64,AA" }]
+    const messages = [{ info: { model: { providerID: "anthropic", modelID: "claude-opus-4-8" } }, parts }]
+    const enableConfig = { ...baseConfig, enableModels: ["anthropic/claude-opus-4-8"], skipProviders: ["anthropic"] }
+    await withMockFetch(successFetch, async () => {
+      const count = await transformMessages(messages, enableConfig, null)
+      assert.strictEqual(count, 1)
+      assert.strictEqual((parts[0] as { type: string }).type, "text")
+    })
+  })
+
+  test("enable-list skips non-matching models", async () => {
+    const parts: unknown[] = [{ type: "file", mime: "image/png", url: "data:image/png;base64,AA" }]
+    const messages = [{ info: { model: { providerID: "anthropic", modelID: "claude-opus-4-8" } }, parts }]
+    const enableConfig = { ...baseConfig, enableModels: ["zeldoc/z-code"] }
+    await withMockFetch(successFetch, async () => {
+      const count = await transformMessages(messages, enableConfig, null)
       assert.strictEqual(count, 0)
       assert.strictEqual((parts[0] as { type: string }).type, "file")
     })

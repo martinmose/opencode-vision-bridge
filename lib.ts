@@ -24,6 +24,7 @@ export interface VisionConfig {
   maxTokens: number
   prefix: string
   skipProviders: string[]
+  enableModels: string[]
   cacheSize: number
   debug: boolean
 }
@@ -60,12 +61,21 @@ export function parseSkipProviders(rawValue: string | undefined): string[] {
     .filter(Boolean)
 }
 
+/** Parse a comma-separated list of model IDs (provider/model format). Empty when unset. */
+export function parseEnableModels(rawValue: string | undefined): string[] {
+  if (rawValue === undefined || rawValue.trim() === "") return []
+  return rawValue
+    .split(",")
+    .map((model) => model.trim().toLowerCase())
+    .filter(Boolean)
+}
+
 /** Build a validated config from an environment-like object. Pure. */
 export function buildConfig(env: Record<string, string | undefined>): VisionConfig {
   return {
-    baseUrl: (env.VISION_BASE_URL || "").replace(/\/+$/, ""),
-    apiKey: env.VISION_API_KEY || "",
-    model: env.VISION_MODEL || "google/gemma-4-31B-it",
+    baseUrl: (env.VISION_BASE_URL || "https://api.zeldoc.ai/v1").replace(/\/+$/, ""),
+    apiKey: env.VISION_API_KEY || env.ZELDOC_API_KEY || "",
+    model: env.VISION_MODEL || "zeldoc/gemma-4-31B",
     question: env.VISION_QUESTION || "Describe this image in detail.",
     timeoutMs: parsePositiveInt(env.VISION_TIMEOUT, 60000, 1000),
     retryDelayMs: parsePositiveInt(env.VISION_RETRY_DELAY_MS, 1000, 0),
@@ -73,6 +83,7 @@ export function buildConfig(env: Record<string, string | undefined>): VisionConf
     maxTokens: parsePositiveInt(env.VISION_MAX_TOKENS, 1024, 1),
     prefix: env.VISION_PREFIX ?? "[Image description]\n",
     skipProviders: parseSkipProviders(env.VISION_SKIP_PROVIDERS),
+    enableModels: parseEnableModels(env.VISION_ENABLE_MODELS),
     cacheSize: parsePositiveInt(env.VISION_CACHE_SIZE, 100, 0),
     debug: env.VISION_DEBUG === "1",
   }
@@ -89,7 +100,7 @@ export interface ImageFilePart {
 }
 
 interface MessageLike {
-  info?: { role?: string; model?: { providerID?: string } }
+  info?: { role?: string; model?: { providerID?: string; modelID?: string } }
   parts?: unknown[]
 }
 
@@ -115,6 +126,19 @@ export function extractActiveProvider(messages: unknown[]): string | undefined {
   for (let index = messages.length - 1; index >= 0; index--) {
     const provider = (messages[index] as MessageLike)?.info?.model?.providerID
     if (typeof provider === "string" && provider) return provider.toLowerCase()
+  }
+  return undefined
+}
+
+/** Extract the full model identifier (providerID/modelID) from the most recent message. */
+export function extractActiveModelId(messages: unknown[]): string | undefined {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const model = (messages[index] as MessageLike)?.info?.model
+    const provider = model?.providerID
+    const modelId = model?.modelID
+    if (typeof provider === "string" && typeof modelId === "string") {
+      return `${provider.toLowerCase()}/${modelId.toLowerCase()}`
+    }
   }
   return undefined
 }
@@ -353,7 +377,14 @@ export async function transformMessages(
   cache: DescriptionCache | null = null,
 ): Promise<number> {
   const provider = extractActiveProvider(messages)
-  if (shouldSkipProvider(provider, config.skipProviders)) {
+
+  if (config.enableModels.length > 0) {
+    const modelId = extractActiveModelId(messages)
+    if (!modelId || !config.enableModels.includes(modelId)) {
+      await log?.("debug", "model not in enable list, skipping", { model: modelId ?? "(unknown)" })
+      return 0
+    }
+  } else if (shouldSkipProvider(provider, config.skipProviders)) {
     await log?.("debug", "skipping vision-capable provider", { provider })
     return 0
   }
