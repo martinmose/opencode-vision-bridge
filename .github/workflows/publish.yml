@@ -8,6 +8,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # NPM_TOKEN lives in the npm environment, which only v* tags can use, so a
+    # workflow on a branch cannot read it.
+    environment: npm
     permissions:
       contents: write
     steps:
