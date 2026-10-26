@@ -35,7 +35,7 @@
     "prepublishOnly": "tsc --noEmit && node --test tests/vision-bridge.test.ts"
   },
   "devDependencies": {
-    "@opencode-ai/plugin": "1.17.8",
+    "@opencode-ai/plugin": "1.19.4",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0"
   }
