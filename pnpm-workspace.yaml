@@ -1,2 +1,8 @@
 allowBuilds:
   msgpackr-extract: false
+
+# @opencode-ai/plugin pins zod 4.1.8 and its effect asks for toml ^4, both with
+# advisories (GHSA-mrhx-c7xc-m3w5, GHSA-9qmh-m7c6-f92p and others).
+overrides:
+  toml: ^5.0.1
+  zod: ^4.6.6
