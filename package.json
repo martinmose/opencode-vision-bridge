@@ -25,11 +25,11 @@
   "author": "Martin Mose Facondini",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/martinmose/opencode-vision-bridge.git"
+    "url": "git+https://github.com/zeldoc/zeldoc-opencode-vision-bridge.git"
   },
-  "homepage": "https://github.com/martinmose/opencode-vision-bridge#readme",
+  "homepage": "https://github.com/zeldoc/zeldoc-opencode-vision-bridge#readme",
   "bugs": {
-    "url": "https://github.com/martinmose/opencode-vision-bridge/issues"
+    "url": "https://github.com/zeldoc/zeldoc-opencode-vision-bridge/issues"
   },
   "scripts": {
     "prepublishOnly": "tsc --noEmit && node --test tests/vision-bridge.test.ts"
