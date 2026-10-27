@@ -8,21 +8,22 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # NPM_TOKEN lives in the npm environment, which only v* tags can use, so a
-    # workflow on a branch cannot read it.
+    # Trusted publishing: npm accepts this workflow's OIDC token, from the npm
+    # environment, instead of a stored token. Only v* tags can use that
+    # environment, so a workflow on a branch cannot publish.
     environment: npm
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          # Trusted publishing needs npm 11.5.1 or later; Node 22 ships npm 10.
+          node-version: 24
           registry-url: https://registry.npmjs.org
       - run: npm install -g pnpm
       - run: pnpm install --frozen-lockfile
       - run: node --test tests/vision-bridge.test.ts
       - run: npx tsc --noEmit
       - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
