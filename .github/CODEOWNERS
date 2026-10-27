@@ -1,4 +1,4 @@
-# The owner reviews every change: with "Require review from Code Owners" on
-# main, nothing merges without that approval. Name a team here once there is
-# one.
-* @martinmose
+# The maintainers team reviews every change: the organization ruleset
+# `main review` requires a code owner's approval on main (the organization
+# owner is exempt). Membership in @zeldoc/maintainers also grants write access.
+* @zeldoc/maintainers
